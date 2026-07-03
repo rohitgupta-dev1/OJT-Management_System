@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, GraduationCap, User } from 'lucide-react';
+import { Shield, GraduationCap, User, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { apiForgotPassword } from '../../lib/api';
 import type { ApiUserRole } from '../../lib/types';
@@ -8,7 +8,8 @@ import type { ApiUserRole } from '../../lib/types';
 type View = 'login' | 'signup' | 'reset';
 
 function dashboardPathForRole(role: ApiUserRole): string {
-  switch (role) {
+  const normRole = (role || '').toLowerCase();
+  switch (normRole) {
     case 'admin':
     case 'batch_manager':
       return '/admin/dashboard';
@@ -16,6 +17,7 @@ function dashboardPathForRole(role: ApiUserRole): string {
     case 'external_mentor':
       return '/mentor/dashboard';
     case 'student':
+    default:
       return '/student/dashboard';
   }
 }
@@ -25,6 +27,39 @@ const signupRoles: { value: ApiUserRole; label: string; icon: typeof Shield }[] 
   { value: 'mentor', label: 'Mentor', icon: GraduationCap },
   { value: 'student', label: 'Student', icon: User },
 ];
+
+interface PasswordFieldProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  show: boolean;
+  onToggle: () => void;
+}
+
+function PasswordField({ label, value, onChange, placeholder, show, onToggle }: PasswordFieldProps) {
+  return (
+    <div>
+      <label className="block text-gray-400 text-xs mb-1">{label}</label>
+      <div className="relative">
+        <input
+          type={show ? 'text' : 'password'} required value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] focus:border-yellow-500 rounded-lg px-3 py-2 pr-9 text-white text-xs outline-none transition-colors placeholder-gray-600"
+        />
+        <button
+          type="button"
+          onClick={onToggle}
+          tabIndex={-1}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+        >
+          {show ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function Login() {
   const { user, login, signup } = useAuth();
@@ -36,7 +71,8 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -50,42 +86,42 @@ export default function Login() {
 
   const resetForm = () => {
     setName(''); setEmail(''); setPassword(''); setConfirmPassword('');
-    setError(null); setResetSent(false);
+    setShowPassword(false); setShowConfirmPassword(false);
+    setResetSent(false);
   };
 
   const switchView = (v: View) => { resetForm(); setView(v); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
 
     // ── Forgot Password ──
     if (view === 'reset') {
-      if (!email) { setError('Please enter your email.'); return; }
+      if (!email) { alert('Please enter your email.'); return; }
       setSubmitting(true);
       try {
         await apiForgotPassword(email);
         setResetSent(true);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Failed to send reset email.');
+        alert(err instanceof Error ? err.message : 'Failed to send reset email.');
       } finally {
         setSubmitting(false);
       }
       return;
     }
 
-    if (!email || !password) { setError('Please fill in all fields.'); return; }
-    if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (!email || !password) { alert('Please fill in all fields.'); return; }
+    if (password.length < 8) { alert('Password must be at least 8 characters.'); return; }
 
     // ── Sign Up ──
     if (view === 'signup') {
-      if (!name.trim()) { setError('Please enter your name.'); return; }
-      if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
+      if (!name.trim()) { alert('Please enter your name.'); return; }
+      if (password !== confirmPassword) { alert('Passwords do not match.'); return; }
       setSubmitting(true);
       try {
         await signup(email, password, name.trim(), signupRole);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Sign up failed.');
+        alert(err instanceof Error ? err.message : 'Sign up failed.');
       } finally {
         setSubmitting(false);
       }
@@ -98,7 +134,7 @@ export default function Login() {
     try {
       await login(email, password);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Sign in failed.');
+      alert(err instanceof Error ? err.message : 'Sign in failed.');
     } finally {
       setSubmitting(false);
     }
@@ -163,17 +199,16 @@ export default function Login() {
                       className="w-full bg-[#1a1a1a] border border-[#2a2a2a] focus:border-yellow-500 rounded-lg px-3 py-2 text-white text-xs outline-none transition-colors placeholder-gray-600"
                     />
                   </div>
-                  <div>
-                    <label className="block text-gray-400 text-xs mb-1">Password</label>
-                    <input
-                      type="password" required value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] focus:border-yellow-500 rounded-lg px-3 py-2 text-white text-xs outline-none transition-colors placeholder-gray-600"
-                    />
-                  </div>
+                  <PasswordField
+                    label="Password"
+                    value={password}
+                    onChange={setPassword}
+                    placeholder="••••••••"
+                    show={showPassword}
+                    onToggle={() => setShowPassword((s) => !s)}
+                  />
 
-                  {error && <p className="text-red-400 text-xs bg-red-400/10 px-3 py-2 rounded-lg">{error}</p>}
+
 
                   <button
                     type="submit"
@@ -184,41 +219,6 @@ export default function Login() {
                     Sign in
                   </button>
                 </form>
-
-                {/* Quick Login Accounts */}
-                <div className="pt-3 border-t border-[#2a2a2a] space-y-1.5">
-                  <p className="text-[#8a8a8a] text-[10px] uppercase font-bold tracking-wider">Quick Select Demo Logins</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => { setEmail('admin@ojt.edu'); setPassword('password'); }}
-                      className="px-2 py-1 bg-zinc-800 hover:bg-zinc-750 text-[10px] text-gray-300 rounded font-medium transition-colors"
-                    >
-                      Admin
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setEmail('rohit.gupta@ojt.edu'); setPassword('password'); }}
-                      className="px-2 py-1 bg-gold/10 hover:bg-gold/20 text-[10px] text-gold rounded font-bold border border-gold/20 transition-all duration-200"
-                    >
-                      Rohit Gupta (Mentor)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setEmail('vishal.donda@ojt.edu'); setPassword('password'); }}
-                      className="px-2 py-1 bg-zinc-800 hover:bg-zinc-750 text-[10px] text-gray-300 rounded font-medium transition-colors"
-                    >
-                      Donda Vishal (Mentor)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setEmail('student1@ojt.edu'); setPassword('password'); }}
-                      className="px-2 py-1 bg-zinc-800 hover:bg-zinc-750 text-[10px] text-gray-300 rounded font-medium transition-colors"
-                    >
-                      Alice Johnson (Student)
-                    </button>
-                  </div>
-                </div>
 
                 <div className="flex items-center justify-between pt-1">
                   <button
@@ -280,26 +280,24 @@ export default function Login() {
                       className="w-full bg-[#1a1a1a] border border-[#2a2a2a] focus:border-yellow-500 rounded-lg px-3 py-2 text-white text-xs outline-none transition-colors placeholder-gray-600"
                     />
                   </div>
-                  <div>
-                    <label className="block text-gray-400 text-xs mb-1">Password</label>
-                    <input
-                      type="password" required value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Min. 8 characters"
-                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] focus:border-yellow-500 rounded-lg px-3 py-2 text-white text-xs outline-none transition-colors placeholder-gray-600"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-400 text-xs mb-1">Confirm password</label>
-                    <input
-                      type="password" required value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] focus:border-yellow-500 rounded-lg px-3 py-2 text-white text-xs outline-none transition-colors placeholder-gray-600"
-                    />
-                  </div>
+                  <PasswordField
+                    label="Password"
+                    value={password}
+                    onChange={setPassword}
+                    placeholder="Min. 8 characters"
+                    show={showPassword}
+                    onToggle={() => setShowPassword((s) => !s)}
+                  />
+                  <PasswordField
+                    label="Confirm password"
+                    value={confirmPassword}
+                    onChange={setConfirmPassword}
+                    placeholder="••••••••"
+                    show={showConfirmPassword}
+                    onToggle={() => setShowConfirmPassword((s) => !s)}
+                  />
 
-                  {error && <p className="text-red-400 text-xs bg-red-400/10 px-3 py-2 rounded-lg">{error}</p>}
+
 
                   <button
                     type="submit"
@@ -350,8 +348,7 @@ export default function Login() {
                       />
                     </div>
 
-                    {error && <p className="text-red-400 text-xs bg-red-400/10 px-3 py-2 rounded-lg">{error}</p>}
-
+ 
                     <button
                       type="submit"
                       disabled={submitting}
