@@ -117,3 +117,7 @@ export async function apiDeleteCohort(id: string): Promise<void> {
     method: 'DELETE',
   });
 }
+
+export async function apiListStudents(): Promise<any> {
+  return apiFetch<any>('/api/v1/students');
+}
