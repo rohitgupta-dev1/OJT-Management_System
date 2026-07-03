@@ -3,7 +3,12 @@ import { Plus, Trash2, Calendar, RefreshCw, Upload, FileText, Briefcase, Layers,
 import DataTable from '../../components/DataTable';
 import Modal from '../../components/Modal';
 import type { Cohort, TermSession, Project, Profile, Student } from '../../lib/types';
-import { apiListCohorts, apiCreateCohort, apiDeleteCohort, apiUpdateCohort } from '../../lib/api';
+import {
+  apiListCohorts, apiCreateCohort, apiDeleteCohort, apiUpdateCohort,
+  apiListProjects, apiGetProjectsForCohort, apiAddProjectsToCohort,
+  apiListStudents, apiListMentors, apiListBatchManagers,
+  apiAddMentorsToCohort, apiAddStudentsToCohort, apiAddBatchManagersToCohort
+} from '../../lib/api';
 import { getDurationString } from '../../lib/utils';
 
 const TERM_OPTIONS: TermSession[] = ['Semester 1', 'Semester 2', 'Term 1', 'Term 2', 'Summer Fast-Track'];
@@ -43,6 +48,115 @@ export default function AdminOJTs({
     endDate: '',
     isActive: true,
   });
+
+  // Mapping Modal State
+  const [mappingModalOpen, setMappingModalOpen] = useState(false);
+  const [mappingCohort, setMappingCohort] = useState<Cohort | null>(null);
+  const [mappingSubTab, setMappingSubTab] = useState<'projects' | 'students' | 'mentors' | 'batchManagers'>('projects');
+  const [mappingLoading, setMappingLoading] = useState(false);
+
+  // Loaded Mapping Data
+  const [mappedProjects, setMappedProjects] = useState<any[]>([]);
+
+  // Master lists for mapping selects
+  const [masterProjects, setMasterProjects] = useState<any[]>([]);
+  const [masterStudents, setMasterStudents] = useState<any[]>([]);
+  const [masterMentors, setMasterMentors] = useState<any[]>([]);
+  const [masterBatchManagers, setMasterBatchManagers] = useState<any[]>([]);
+
+  // Selection states (for new mappings)
+  const [selectedMappingIds, setSelectedMappingIds] = useState<string[]>([]);
+
+  const fetchMappingData = useCallback(async (cohortId: string, tab: string) => {
+    setMappingLoading(true);
+    setSelectedMappingIds([]);
+    try {
+      if (tab === 'projects') {
+        const mapped = await apiGetProjectsForCohort(cohortId);
+        setMappedProjects(Array.isArray(mapped) ? mapped : []);
+        const master = await apiListProjects();
+        setMasterProjects(Array.isArray(master) ? master : []);
+      } else if (tab === 'students') {
+        const master = await apiListStudents();
+        const studentList = master && master.data ? master.data : (Array.isArray(master) ? master : []);
+        setMasterStudents(studentList);
+      } else if (tab === 'mentors') {
+        const master = await apiListMentors();
+        setMasterMentors(Array.isArray(master) ? master : []);
+      } else if (tab === 'batchManagers') {
+        const master = await apiListBatchManagers();
+        setMasterBatchManagers(Array.isArray(master) ? master : []);
+      }
+    } catch (err: any) {
+      console.error('Failed to load mapping data:', err);
+    } finally {
+      setMappingLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mappingCohort && mappingModalOpen) {
+      fetchMappingData(mappingCohort.id, mappingSubTab);
+    }
+  }, [mappingCohort, mappingSubTab, mappingModalOpen, fetchMappingData]);
+
+  const handleSaveProjectsMapping = async () => {
+    if (!mappingCohort || selectedMappingIds.length === 0) return;
+    try {
+      setMappingLoading(true);
+      await apiAddProjectsToCohort(mappingCohort.id, selectedMappingIds);
+      alert('Projects mapped successfully!');
+      const mapped = await apiGetProjectsForCohort(mappingCohort.id);
+      setMappedProjects(Array.isArray(mapped) ? mapped : []);
+      setSelectedMappingIds([]);
+    } catch (err: any) {
+      alert(err.message || 'Failed to map projects');
+    } finally {
+      setMappingLoading(false);
+    }
+  };
+
+  const handleSaveStudentsMapping = async () => {
+    if (!mappingCohort || selectedMappingIds.length === 0) return;
+    try {
+      setMappingLoading(true);
+      await apiAddStudentsToCohort(mappingCohort.id, selectedMappingIds);
+      alert('Students mapped successfully!');
+      setSelectedMappingIds([]);
+    } catch (err: any) {
+      alert(err.message || 'Failed to map students');
+    } finally {
+      setMappingLoading(false);
+    }
+  };
+
+  const handleSaveMentorsMapping = async () => {
+    if (!mappingCohort || selectedMappingIds.length === 0) return;
+    try {
+      setMappingLoading(true);
+      await apiAddMentorsToCohort(mappingCohort.id, selectedMappingIds);
+      alert('Mentors mapped successfully!');
+      setSelectedMappingIds([]);
+    } catch (err: any) {
+      alert(err.message || 'Failed to map mentors');
+    } finally {
+      setMappingLoading(false);
+    }
+  };
+
+  const handleSaveBatchManagersMapping = async () => {
+    if (!mappingCohort || selectedMappingIds.length === 0) return;
+    try {
+      setMappingLoading(true);
+      await apiAddBatchManagersToCohort(mappingCohort.id, selectedMappingIds);
+      alert('Batch Managers mapped successfully!');
+      setSelectedMappingIds([]);
+    } catch (err: any) {
+      alert(err.message || 'Failed to map batch managers');
+    } finally {
+      setMappingLoading(false);
+    }
+  };
 
   // Projects State
   const [projectModalOpen, setProjectModalOpen] = useState(false);
@@ -415,6 +529,17 @@ export default function AdminOJTs({
               actions={(row: any) => (
                 <div className="flex items-center gap-1">
                   <button
+                    onClick={() => {
+                      setMappingCohort(row as unknown as Cohort);
+                      setMappingSubTab('projects');
+                      setMappingModalOpen(true);
+                    }}
+                    className="p-1.5 text-gray-400 hover:text-gold transition-colors"
+                    title="Manage Cohort Mappings"
+                  >
+                    <Layers size={16} />
+                  </button>
+                  <button
                     onClick={() => handleEditCohort(row as unknown as Cohort)}
                     className="p-1.5 text-gray-400 hover:text-gold transition-colors"
                     title="Edit Cohort"
@@ -747,6 +872,211 @@ export default function AdminOJTs({
             <FileText size={18} />
             Import Project Catalog
           </button>
+        </div>
+      </Modal>
+
+      {/* Cohort Mappings Manager Modal */}
+      <Modal
+        open={mappingModalOpen}
+        onClose={() => {
+          setMappingModalOpen(false);
+          setMappingCohort(null);
+          setSelectedMappingIds([]);
+        }}
+        title={`Manage Mappings for ${mappingCohort ? (mappingCohort.academicYear + ' — ' + (mappingCohort.sessionTerm === 'Term 1' ? 'Semester 1' : mappingCohort.sessionTerm === 'Term 2' ? 'Semester 2' : mappingCohort.sessionTerm)) : ''}`}
+      >
+        <div className="space-y-4">
+          {/* Sub tabs */}
+          <div className="flex border-b border-zinc-800">
+            {(['projects', 'students', 'mentors', 'batchManagers'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setMappingSubTab(tab)}
+                className={`flex-1 py-2 font-bold text-xs uppercase tracking-wider border-b-2 transition-all duration-200 ${
+                  mappingSubTab === tab
+                    ? 'border-gold text-gold bg-gold/5'
+                    : 'border-transparent text-gray-400 hover:text-white'
+                }`}
+              >
+                {tab === 'batchManagers' ? 'Managers' : tab}
+              </button>
+            ))}
+          </div>
+
+          {mappingLoading && (
+            <div className="flex justify-center py-6">
+              <div className="w-5 h-5 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
+            </div>
+          )}
+
+          {!mappingLoading && mappingCohort && (
+            <div className="space-y-4">
+              {/* Tab Content: Projects */}
+              {mappingSubTab === 'projects' && (
+                <div className="space-y-4">
+                  {mappedProjects.length > 0 ? (
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Currently Mapped Projects</h4>
+                      <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto pr-1">
+                        {mappedProjects.map(p => (
+                          <div key={p.id} className="p-2.5 bg-zinc-850 border border-zinc-750 rounded-lg flex justify-between items-center">
+                            <div>
+                              <p className="text-xs font-semibold text-white">{p.title}</p>
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-gold/10 text-gold font-medium mt-1 inline-block">{p.track}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500 italic">No projects mapped to this cohort yet.</p>
+                  )}
+
+                  <div className="border-t border-zinc-800 pt-3">
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Map New Projects</h4>
+                    <div className="max-h-40 overflow-y-auto border border-zinc-850 rounded-lg p-2 space-y-1.5 bg-zinc-900 pr-1">
+                      {masterProjects.filter(p => !mappedProjects.some(mp => mp.id === p.id)).map(p => (
+                        <label key={p.id} className="flex items-center gap-2 text-xs text-gray-300 hover:text-white cursor-pointer py-1">
+                          <input
+                            type="checkbox"
+                            checked={selectedMappingIds.includes(p.id)}
+                            onChange={e => {
+                              if (e.target.checked) setSelectedMappingIds([...selectedMappingIds, p.id]);
+                              else setSelectedMappingIds(selectedMappingIds.filter(id => id !== p.id));
+                            }}
+                            className="rounded bg-zinc-800 border-zinc-700 text-gold focus:ring-gold"
+                          />
+                          <div>
+                            <span className="font-semibold">{p.title}</span>
+                            <span className="ml-1.5 text-[9px] px-1.5 py-0.2 rounded bg-gold/10 text-gold font-medium">{p.track}</span>
+                          </div>
+                        </label>
+                      ))}
+                      {masterProjects.filter(p => !mappedProjects.some(mp => mp.id === p.id)).length === 0 && (
+                        <p className="text-xs text-gray-500 italic">All available projects are already mapped.</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleSaveProjectsMapping}
+                      disabled={selectedMappingIds.length === 0 || mappingLoading}
+                      className="mt-3 w-full py-2 bg-gold text-black text-xs font-semibold rounded-lg hover:bg-gold-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    >
+                      Map Selected Projects
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab Content: Students */}
+              {mappingSubTab === 'students' && (
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Map Students to Cohort</h4>
+                  <div className="max-h-60 overflow-y-auto border border-zinc-850 rounded-lg p-2 space-y-1.5 bg-zinc-900 pr-1">
+                    {masterStudents.map(s => (
+                      <label key={s.id} className="flex items-center gap-2 text-xs text-gray-300 hover:text-white cursor-pointer py-1">
+                        <input
+                          type="checkbox"
+                          checked={selectedMappingIds.includes(s.id)}
+                          onChange={e => {
+                            if (e.target.checked) setSelectedMappingIds([...selectedMappingIds, s.id]);
+                            else setSelectedMappingIds(selectedMappingIds.filter(id => id !== s.id));
+                          }}
+                          className="rounded bg-zinc-800 border-zinc-700 text-gold focus:ring-gold"
+                        />
+                        <div>
+                          <span className="font-semibold text-white">{s.fullName}</span>
+                          <span className="ml-2 text-gray-500 font-mono text-[9px]">{s.rollNumber}</span>
+                          {s.batch && <span className="ml-2 text-[9px] px-1.5 py-0.2 bg-zinc-800 border border-zinc-750 rounded text-gray-400">Batch: {s.batch}</span>}
+                        </div>
+                      </label>
+                    ))}
+                    {masterStudents.length === 0 && (
+                      <p className="text-xs text-gray-500 italic">No registered students found.</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleSaveStudentsMapping}
+                    disabled={selectedMappingIds.length === 0 || mappingLoading}
+                    className="w-full py-2 bg-gold text-black text-xs font-semibold rounded-lg hover:bg-gold-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    Map Selected Students
+                  </button>
+                </div>
+              )}
+
+              {/* Tab Content: Mentors */}
+              {mappingSubTab === 'mentors' && (
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Map Mentors to Cohort</h4>
+                  <div className="max-h-60 overflow-y-auto border border-zinc-850 rounded-lg p-2 space-y-1.5 bg-zinc-900 pr-1">
+                    {masterMentors.map(m => (
+                      <label key={m.id} className="flex items-center gap-2 text-xs text-gray-300 hover:text-white cursor-pointer py-1">
+                        <input
+                          type="checkbox"
+                          checked={selectedMappingIds.includes(m.id)}
+                          onChange={e => {
+                            if (e.target.checked) setSelectedMappingIds([...selectedMappingIds, m.id]);
+                            else setSelectedMappingIds(selectedMappingIds.filter(id => id !== m.id));
+                          }}
+                          className="rounded bg-zinc-800 border-zinc-700 text-gold focus:ring-gold"
+                        />
+                        <div>
+                          <span className="font-semibold text-white">{m.fullName}</span>
+                          <span className="ml-2 text-gray-500 text-[10px]">({m.email})</span>
+                        </div>
+                      </label>
+                    ))}
+                    {masterMentors.length === 0 && (
+                      <p className="text-xs text-gray-500 italic">No registered mentors found.</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleSaveMentorsMapping}
+                    disabled={selectedMappingIds.length === 0 || mappingLoading}
+                    className="w-full py-2 bg-gold text-black text-xs font-semibold rounded-lg hover:bg-gold-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    Map Selected Mentors
+                  </button>
+                </div>
+              )}
+
+              {/* Tab Content: Batch Managers */}
+              {mappingSubTab === 'batchManagers' && (
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Map Batch Managers to Cohort</h4>
+                  <div className="max-h-60 overflow-y-auto border border-zinc-850 rounded-lg p-2 space-y-1.5 bg-zinc-900 pr-1">
+                    {masterBatchManagers.map(bm => (
+                      <label key={bm.id} className="flex items-center gap-2 text-xs text-gray-300 hover:text-white cursor-pointer py-1">
+                        <input
+                          type="checkbox"
+                          checked={selectedMappingIds.includes(bm.id)}
+                          onChange={e => {
+                            if (e.target.checked) setSelectedMappingIds([...selectedMappingIds, bm.id]);
+                            else setSelectedMappingIds(selectedMappingIds.filter(id => id !== bm.id));
+                          }}
+                          className="rounded bg-zinc-800 border-zinc-700 text-gold focus:ring-gold"
+                        />
+                        <div>
+                          <span className="font-semibold text-white">{bm.fullName}</span>
+                          <span className="ml-2 text-gray-500 text-[10px]">({bm.email})</span>
+                        </div>
+                      </label>
+                    ))}
+                    {masterBatchManagers.length === 0 && (
+                      <p className="text-xs text-gray-500 italic">No registered batch managers found.</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleSaveBatchManagersMapping}
+                    disabled={selectedMappingIds.length === 0 || mappingLoading}
+                    className="w-full py-2 bg-gold text-black text-xs font-semibold rounded-lg hover:bg-gold-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    Map Selected Batch Managers
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </Modal>
     </div>

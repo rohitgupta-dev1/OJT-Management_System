@@ -44,8 +44,8 @@ export default function AdminStudents({
       name: prof?.name ?? '-',
       email: prof?.email ?? '-',
       roll_number: s.roll_number,
-      batch: batch?.name ?? '-',
-      semester: semester?.name ?? '-',
+      batch: batch?.name ?? s.batch_id ?? '-',
+      semester: semester?.name ?? s.semester_id ?? '-',
       track: s.track ?? '-',
     };
   });

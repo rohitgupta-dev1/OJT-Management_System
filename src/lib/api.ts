@@ -117,3 +117,55 @@ export async function apiDeleteCohort(id: string): Promise<void> {
     method: 'DELETE',
   });
 }
+
+// ── Master Entities & Mapping APIs ──────────────────────────────────────────────
+
+export async function apiListProjects(): Promise<any[]> {
+  return apiFetch<any[]>('/api/v1/projects');
+}
+
+export async function apiGetProjectsForCohort(cohortId: string): Promise<any[]> {
+  return apiFetch<any[]>(`/api/v1/cohorts/${cohortId}/projects`);
+}
+
+export async function apiAddProjectsToCohort(cohortId: string, projectIds: string[]): Promise<void> {
+  return apiFetch<void>(`/api/v1/cohorts/${cohortId}/projects`, {
+    method: 'POST',
+    body: JSON.stringify({ projectIds }),
+  });
+}
+
+export async function apiListStudents(): Promise<any[]> {
+  return apiFetch<any[]>('/api/v1/students');
+}
+
+export async function apiListMentors(type?: 'internal' | 'external'): Promise<any[]> {
+  const query = type ? `?type=${type}` : '';
+  return apiFetch<any[]>(`/api/v1/mentors${query}`);
+}
+
+export async function apiListBatchManagers(): Promise<any[]> {
+  return apiFetch<any[]>('/api/v1/batch-managers');
+}
+
+export async function apiAddMentorsToCohort(cohortId: string, userIds: string[]): Promise<void> {
+  return apiFetch<void>(`/api/v1/cohorts/${cohortId}/mentors`, {
+    method: 'POST',
+    body: JSON.stringify({ userIds }),
+  });
+}
+
+export async function apiAddStudentsToCohort(cohortId: string, userIds: string[]): Promise<void> {
+  return apiFetch<void>(`/api/v1/cohorts/${cohortId}/students`, {
+    method: 'POST',
+    body: JSON.stringify({ userIds }),
+  });
+}
+
+export async function apiAddBatchManagersToCohort(cohortId: string, userIds: string[]): Promise<void> {
+  return apiFetch<void>(`/api/v1/cohorts/${cohortId}/batch-managers`, {
+    method: 'POST',
+    body: JSON.stringify({ userIds }),
+  });
+}
+
