@@ -191,28 +191,28 @@ export default function Login() {
                   <div className="flex flex-wrap gap-1.5">
                     <button
                       type="button"
-                      onClick={() => { setEmail('admin@ojt.edu'); setPassword('password'); }}
+                      onClick={() => { setEmail('admin@polariscampus.com'); setPassword('password'); }}
                       className="px-2 py-1 bg-zinc-800 hover:bg-zinc-750 text-[10px] text-gray-300 rounded font-medium transition-colors"
                     >
                       Admin
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setEmail('rohit.gupta@ojt.edu'); setPassword('password'); }}
+                      onClick={() => { setEmail('rohit.gupta@polariscampus.com'); setPassword('password'); }}
                       className="px-2 py-1 bg-gold/10 hover:bg-gold/20 text-[10px] text-gold rounded font-bold border border-gold/20 transition-all duration-200"
                     >
                       Rohit Gupta (Mentor)
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setEmail('vishal.donda@ojt.edu'); setPassword('password'); }}
+                      onClick={() => { setEmail('vishal.donda@polariscampus.com'); setPassword('password'); }}
                       className="px-2 py-1 bg-zinc-800 hover:bg-zinc-750 text-[10px] text-gray-300 rounded font-medium transition-colors"
                     >
                       Donda Vishal (Mentor)
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setEmail('student1@ojt.edu'); setPassword('password'); }}
+                      onClick={() => { setEmail('student1@polariscampus.com'); setPassword('password'); }}
                       className="px-2 py-1 bg-zinc-800 hover:bg-zinc-750 text-[10px] text-gray-300 rounded font-medium transition-colors"
                     >
                       Alice Johnson (Student)
